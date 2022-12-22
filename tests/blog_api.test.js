@@ -2,8 +2,12 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const Blog = require('../models/blogs')
+const User = require('../models/users')
+const bcrypt = require('bcrypt')
 const api = supertest(app)
 const { initialBlogs, blogsInDb } = require('./test_helper')
+
+let tokenUser = null
 
 
 beforeEach(async () => {
@@ -13,6 +17,25 @@ beforeEach(async () => {
         let blogObject = new Blog(blog)
         await blogObject.save()
     }
+
+    await User.deleteMany({})
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({
+        username: 'root',
+        name: 'mica',
+        passwordHash
+    })
+    await user.save()
+
+    const userForToken = {
+        username: user.username,
+        password: 'sekret'
+    }
+    const response = await api
+        .post('/api/login')
+        .send(userForToken)
+
+    tokenUser = response.body.token
 })
 
 test('blog are returned as json', async () => {
@@ -72,7 +95,11 @@ describe('when there is initially some blogs saved', () => {
 
 })
 
+
+
+
 describe('when we want to save new blogs', () => {
+
     test('a valid blog can be added', async () => {
         const newBlog = {
             title: 'Jupiter',
@@ -80,9 +107,10 @@ describe('when we want to save new blogs', () => {
             url: 'https://Jupiter.com/',
             likes: 5
         }
-
+        console.log(tokenUser)
         await api
             .post('/api/blogs')
+            .set('Authorization', `bearer ${tokenUser}`)
             .send(newBlog)
             .expect(200)
             .expect('Content-Type', /application\/json/)
@@ -102,6 +130,7 @@ describe('when we want to save new blogs', () => {
 
         await api
             .post('/api/blogs')
+            .set('Authorization', `bearer ${tokenUser}`)
             .send(newBlog)
             .expect(400)
 
@@ -119,6 +148,7 @@ describe('when we want to save new blogs', () => {
 
         const result = await api
             .post('/api/blogs')
+            .set('Authorization', `bearer ${tokenUser}`)
             .send(newBlog)
             .expect(200)
             .expect('Content-Type', /application\/json/)
@@ -135,6 +165,7 @@ describe('when we want to delete blogs', () => {
 
         await api
             .delete(`/api/blogs/${blogToDelete.id}`)
+            .set('Authorization', `bearer ${tokenUser}`)
             .expect(204)
 
         const blogsAtEnd = await blogsInDb()
