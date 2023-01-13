@@ -8,6 +8,7 @@ test('dummy returns one', () => {
     expect(result).toBe(1)
 })
 
+
 describe('total likes', () => {
 
     test('the sum of the likes of the array', () => {

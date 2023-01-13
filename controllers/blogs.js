@@ -41,14 +41,32 @@ blogsRouter.post('/', tokenExtractor, async (request, response) => {
         })
     }
 
-
-
     const savedBlog = await blog.save()
     user.blogs = user.blogs.concat(savedBlog._id)
     await user.save()
 
     response.json(savedBlog)
 })
+
+blogsRouter.put('/:id', tokenExtractor, async (request, response) => {
+    const body = request.body
+    const userId = request.userId
+
+    const user = await User.findById(userId)
+
+    const blog = {
+        title: body.title,
+        author: body.author,
+        url: body.url,
+        likes: body.likes || 0,
+        user: user._id
+    }
+
+    const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
+    response.json(updatedBlog)
+
+})
+
 
 blogsRouter.delete('/:id', tokenExtractor, async (request, response) => {
     await Blog.findByIdAndRemove(request.params.id)
